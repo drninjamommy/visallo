@@ -53,8 +53,17 @@ public class VertexiumLongRunningProcessRepository extends LongRunningProcessRep
     }
 
     @Override
+    public String enqueueDeadLetter(JSONObject longRunningProcessQueueItem, User user, Authorizations authorizations) {
+        return enqueue(longRunningProcessQueueItem, true, user);
+    }
+
+    @Override
     public String enqueue(JSONObject longRunningProcessQueueItem, User user, Authorizations authorizations) {
-        authorizations = getAuthorizations(user);
+        return enqueue(longRunningProcessQueueItem, false, user);
+    }
+
+    private String enqueue(JSONObject longRunningProcessQueueItem, boolean deadLetter, User user) {
+        Authorizations authorizations = getAuthorizations(user);
 
         Vertex userVertex;
         if (user instanceof SystemUser) {
@@ -93,7 +102,11 @@ public class VertexiumLongRunningProcessRepository extends LongRunningProcessRep
         }
 
         longRunningProcessQueueItem.put("id", longRunningProcessVertexId);
-        this.workQueueRepository.pushLongRunningProcessQueue(longRunningProcessQueueItem);
+        if (deadLetter) {
+            this.workQueueRepository.pushLongRunningProcessDeadLetterQueue(longRunningProcessQueueItem);
+        } else {
+            this.workQueueRepository.pushLongRunningProcessQueue(longRunningProcessQueueItem);
+        }
 
         return longRunningProcessVertexId;
     }
